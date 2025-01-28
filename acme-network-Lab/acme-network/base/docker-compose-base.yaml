@@ -117,4 +117,4 @@ services:
         - ../crypto-config/peerOrganizations/org3.acme.com/peers/peer0.org3.acme.com/tls:/etc/hyperledger/fabric/tls
     ports:
       - 9051:7051
-      - 9053:7053R
+      - 9053:7053
