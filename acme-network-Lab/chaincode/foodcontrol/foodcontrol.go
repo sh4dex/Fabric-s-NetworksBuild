@@ -3,87 +3,76 @@ package main
 import (
   "encoding/json"
   "fmt"
-  "strconv"
 
-  //from Hyperledger
+  // Hyperledger Fabric contract API
   "github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
-//Declaring the structure for the contract to have control over the food
-type SmartContract struct{
+// SmartContract provides functions for managing food assets
+type SmartContract struct {
   contractapi.Contract
 }
 
-//Food describes basic details about food
-type Food struct{
-  Farmer    string  `json:"farmer"`
-  Variety   string  `json:"variety"`
+// Food describes basic details about a food asset
+type Food struct {
+  Farmer  string `json:"farmer"`
+  Variety string `json:"variety"`
 }
 
-func (s *SmartContract) Set (ctx contractapi.TransactionContextInterface, foodId string, farmer string, variety string ) error {
-  //syntax validations
-  //Bussines validations
-
-  food,err := s.Query(ctx, foodId)
-  if food != nil{
-    fmt.Printf("The asset already exist: %s", err.Error())
-    return err
+// Set creates a new food asset in the ledger
+func (s *SmartContract) Set(ctx contractapi.TransactionContextInterface, foodId string, farmer string, variety string) error {
+  // Check if the food already exists
+  existingFood, err := s.Query(ctx, foodId)
+  if existingFood != nil {
+    return fmt.Errorf("Food ID %s already exists", foodId)
   }
 
-  food = Food {
-    Farmer : farmer,
-    Variety : variety
+  // Create new food asset
+  food := Food{
+    Farmer:  farmer,
+    Variety: variety,
   }
 
-  //foodAsBytes, _ := json.Marshal(food)
+  // Convert struct to JSON
   foodAsBytes, err := json.Marshal(food)
-  if err != nil{
-    fmt.Printf("Error at Marshal json with food: %s", err.Error())
-    return err
+  if err != nil {
+    return fmt.Errorf("Error marshaling JSON: %s", err.Error())
   }
 
-  //Saving to the Ledger as `Key:Value`
+  // Save to ledger
   return ctx.GetStub().PutState(foodId, foodAsBytes)
-
 }
 
-
-func (s *SmartContract) Query (ctx contractapi.TransactionContextInterface, foodId string) (*Food, error) {
+// Query retrieves a food asset from the ledger by its ID
+func (s *SmartContract) Query(ctx contractapi.TransactionContextInterface, foodId string) (*Food, error) {
   foodAsBytes, err := ctx.GetStub().GetState(foodId)
-  if err != nil{
-    return  nil, fmt.Errorf(" Error to read From world state: %s", err.Error())
+  if err != nil {
+    return nil, fmt.Errorf("Error reading from world state: %s", err.Error())
   }
 
-  if foodAsBytes == nil{
-    return nil, fmt.Errorf("Error Food Id %s does not exist! ", foodId)
+  if foodAsBytes == nil {
+    return nil, fmt.Errorf("Food ID %s does not exist!", foodId)
   }
 
-  food := new(Food)
-
-  err = json.Unmarshal(foodAsBytes, food)
-  if err != nil{
-    return  nil, fmt.Errorf("Unmarshal error: %s", err.Error())
+  var food Food
+  err = json.Unmarshal(foodAsBytes, &food)
+  if err != nil {
+    return nil, fmt.Errorf("Error unmarshaling JSON: %s", err.Error())
   }
 
-
-  return food, nil
-
+  return &food, nil
 }
 
-
-//Main Function 
-func main(){
+// Main function
+func main() {
   chaincode, err := contractapi.NewChaincode(new(SmartContract))
-
-  //If an error occurs while creating the contrat
-  if err != nil{
-    fmt.Printf("Error create foodcontrol smartcontract: %s", err.Error())
+  if err != nil {
+    fmt.Printf("Error creating foodcontrol smart contract: %s", err.Error())
     return
   }
 
-  //If an error occurs while Starting the contract
-  if err := chaincode.Start(); err != nil{
-    fmt.Printf("Error create foodcontrol smartcontract: %s", err.Error())
+  if err := chaincode.Start(); err != nil {
+    fmt.Printf("Error starting foodcontrol smart contract: %s", err.Error())
   }
-
 }
+
